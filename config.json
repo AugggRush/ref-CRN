@@ -1,0 +1,22 @@
+{
+    "CRNN_config": {
+     "in_channel": 1,
+     "batch_size": 160,
+     "frame_size" : 320
+    },
+    "train_config": {
+        "output_directory": "CRNN_checkpoints/",
+        "epochs": 100,
+        "learning_rate": 2e-4,
+        "iters_per_checkpoint": 10,
+        "batch_size": 6,
+        "seed": 1234,
+        "checkpoint_path": ""
+    },
+    "data_config": {
+        "training_files": "train_files.txt",
+        "win_length": 320,
+        "hop_length": 160,
+        "sampling_rate": 16000
+    }
+}
