@@ -105,5 +105,13 @@ class LJspeechDataset(Dataset):
 
 def collate_fn(data):
     data.sort(key=lambda x: len(x), reverse=True)
+    data_len = [s.size(0) for s in data]
+    for ind, l in enumerate(data_len):
+        if l <= 500:
+            continue
+        else:
+            max_start = l - 400
+            data_start = random.randint(0, max_start)
+            data[ind] = data[ind][data_start:data_start+400]
     data = pad_sequence(data, batch_first=True)
     return data

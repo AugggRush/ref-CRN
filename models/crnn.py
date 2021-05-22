@@ -15,43 +15,29 @@ class OnedirectionalLSTM(nn.Module):
         self.embedding = nn.Linear(nHidden, nOut)
         self.activationFunc = nn.Tanh()
         #    hiddenFlow = [n_layer(2), batchSize, nHidden]
-        self.hiddenFlow = (torch.randn([n_layer, batchSize, nHidden]),\
-            torch.randn([batchSize, n_layer, nHidden]))
+        self.hiddenFlow = (torch.randn([n_layer, batchSize, nHidden]).cuda(),\
+            torch.randn([n_layer, batchSize, nHidden]).cuda())
 
     def forward(self, inputs):
         #    inputs = [batch, sequence(num_frame), channels*features]
         inputs = inputs.permute(1, 0, 2)
         #    inputs = [sequence(num_frame), batch, channels*features]
-        output = torch.tensor([]) #    store output in every time step
         
-        for tStep in range(inputs.size(0)):
-            #    masked training to address training and testing mismatch
-            if tStep == 1:
-                rnn_in = inputs[tStep,:,:]
-            else:
-                mask_flag = torch.rand(1)
-                if mask_flag <= 0.3:
-                    rnn_in = output[tStep-1]
-                else:
-                    rnn_in = inputs[tStep,:,:]
-            rnn_in = rnn_in.unsqueeze(0)
-            #    rnn_in = [sequence(1), batch, channels*features]
-            recurrent, self.hiddenFlow = self.rnn(rnn_in, self.hiddenFlow)
-            #    recurrent = [sequence(1), batch, nHidden]
-            T, B, H = recurrent.size()
+        rnn_in = inputs
+        #    rnn_in = [sequence(1), batch, channels*features]
+        recurrent, self.hiddenFlow = self.rnn(rnn_in, self.hiddenFlow)
+        #    recurrent = [sequence(1), batch, nHidden]
+        T, B, H = recurrent.size()
 
-            t_rec = recurrent.view(T * B, H)
-            #    t_rec = [batch*sequence(num_frame), nHidden]
-            fc_output = self.embedding(t_rec) 
-            #    fc_output = [batch*sequence(num_frame), nOut] 
-            fc_output = self.activationFunc(fc_output)
-            #    fc_output = [sequence(num_frame), batch, nOut] 
-            fc_output = fc_output.view(T, B, -1)
-
-            #    output = [sequence(num_frame), batch, nOut]
-            output = torch.cat([output, fc_output], dim=0)
-            
-        return output.permute(1, 0, 2).continuous()
+        t_rec = recurrent.view(T * B, H)
+        #    t_rec = [batch*sequence(num_frame), nHidden]
+        fc_output = self.embedding(t_rec) 
+        #    fc_output = [batch*sequence(num_frame), nOut] 
+        fc_output = self.activationFunc(fc_output)
+        #    fc_output = [sequence(num_frame), batch, nOut] 
+        fc_output = fc_output.view(T, B, -1)
+        #    return [batch, sequence(1), nOut]
+        return fc_output.permute(1, 0, 2).continuous()
 
 class cnnEncoder(nn.Module):
 
@@ -59,7 +45,7 @@ class cnnEncoder(nn.Module):
         #    in_dim = input channels = 1
         #    in_features = frame_size
         super(cnnEncoder, self).__init__()
-        kernel_channels = [16, 16, 32, 64, 128, 128, 256, 256]
+        kernel_channels = [8, 8, 16, 32, 64, 64, 64, 64]
         kernel_sizes = [1, 3, 3, 3, 3, 3, 3, 3]
         #    out_features recored the number of output features of every conv layer
         out_features = []
@@ -85,7 +71,7 @@ class cnnEncoder(nn.Module):
 
     def forward(self, miniBatch_inputs):
         #    minibatch_input = [batch, sequence(num_frame), features(frame_size)]
-        layer_output = []
+    
         #    minibatch_input = [batch, channels(1), sequence(num_frame), features(frame_size)]
         miniBatch_inputs = miniBatch_inputs.unsqueeze(1)
         #    minibatch_input = [batch, channels(16), sequence(num_frame), features(frame_size)]
@@ -102,7 +88,7 @@ class cnnEncoder(nn.Module):
             else:
                 layer_output = self.convBlock[i_layer](layer_output)
 
-        return layer_output  #The last one in the list is final output
+        return layer_output
 
 
 
@@ -115,15 +101,32 @@ class CRNN(nn.Module):
         super(CRNN, self).__init__()
         self.batch_size = batch_size
         self.encoder = cnnEncoder(in_channel, frame_size)
-        self.rnn = OnedirectionalLSTM(self.batch_size, self.encoder.features[-1]*256, 1024, 2, frame_size)
+        self.rnn = OnedirectionalLSTM(self.batch_size, self.encoder.features[-1]*64, 1024, 2, frame_size)
 
     def forward(self, minibatch_in):
+        #    minibatch_in = [batchsize, num_frame, features]
+        # oneBatch = minibatch_in.permute(1, 0, 2).continuous()
+        #    oneBatch = [num_frame, batchsize, features]
         # conv features
-        #    encoderOutput = [batchsize*num_frame, channels, features]
-        encoderOutput = self.encoder(minibatch_in) # [-1]
-        #    lstmInput = [batchsize, num_frame, channels*features]
-        lstmInput = encoderOutput.view(self.batch_size, -1, self.encoder.features[-1]*256)
-        #    output = [batchsize, num_frame, frame_size]
-        output = self.rnn(lstmInput)
-
+        output = torch.tensor([]).cuda() 
+        #    store output in every time step
+        for tStep in range(minibatch_in.size(1)):
+            if tStep == 0:
+                crn_in = minibatch_in[:,tStep,:]
+            else:
+                mask_flag = torch.rand(1)
+                if mask_flag <= 0.3:
+                    crn_in = output[tStep-1]
+                else:
+                    crn_in = minibatch_in[:,tStep,:]
+            #    crn_in = [batch, sequence(1), channels*features]
+            crn_in = crn_in.unsqueeze(0)
+            #    encoderOutput = [batchsize*num_frame, channels, features]
+            encoderOutput = self.encoder(crn_in) # [-1]
+            #    lstmInput = [batchsize, num_frame(1), channels*features]
+            lstmInput = encoderOutput.view(self.batch_size, -1, self.encoder.features[-1]*64)
+            #    rnn_output = [batchsize, num_frame(1), frame_size]
+            rnn_output = self.rnn(lstmInput)
+            output = torch.cat([output, rnn_output], dim=1)
+            
         return output

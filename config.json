@@ -1,7 +1,7 @@
 {
     "CRNN_config": {
      "in_channel": 1,
-     "batch_size": 160,
+     "batch_size": 12,
      "frame_size" : 320
     },
     "train_config": {
@@ -9,7 +9,7 @@
         "epochs": 100,
         "learning_rate": 2e-4,
         "iters_per_checkpoint": 10,
-        "batch_size": 6,
+        "batch_size": 12,
         "seed": 1234,
         "checkpoint_path": ""
     },
