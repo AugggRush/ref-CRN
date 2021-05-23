@@ -110,8 +110,8 @@ def collate_fn(data):
         if l <= 500:
             continue
         else:
-            max_start = l - 400
+            max_start = l - 500
             data_start = random.randint(0, max_start)
-            data[ind] = data[ind][data_start:data_start+400]
+            data[ind] = data[ind][data_start:data_start+500]
     data = pad_sequence(data, batch_first=True)
     return data

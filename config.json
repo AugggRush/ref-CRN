@@ -1,15 +1,19 @@
 {
     "CRNN_config": {
      "in_channel": 1,
-     "batch_size": 12,
-     "frame_size" : 320
+     "batch_size": 13,
+     "frame_size" : 320,
+     "kernel_channels": [8, 8, 16, 32, 64, 64, 64, 64],
+     "kernel_sizes": [1, 3, 3, 3, 3, 3, 3, 3],
+     "num_hidden": 1024,
+     "num_lstmLayer": 2
     },
     "train_config": {
         "output_directory": "CRNN_checkpoints/",
         "epochs": 100,
         "learning_rate": 2e-4,
         "iters_per_checkpoint": 10,
-        "batch_size": 12,
+        "batch_size": 13,
         "seed": 1234,
         "checkpoint_path": ""
     },
