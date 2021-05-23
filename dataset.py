@@ -107,7 +107,7 @@ def collate_fn(data):
     data.sort(key=lambda x: len(x), reverse=True)
     data_len = [s.size(0) for s in data]
     for ind, l in enumerate(data_len):
-        if l <= 500:
+        if l <= 400:
             continue
         else:
             max_start = l - 400

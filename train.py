@@ -38,7 +38,7 @@ def train(output_directory, epochs, learning_rate, iters_per_checkpoint, batch_s
     criterion = torch.nn.L1Loss()
     model = CRNN(**CRNN_config).cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
+    torch.autograd.set_detect_anomaly(True)
     # load checkpoint if one exists
     iteration = 0
     if checkpoint_path != "":
@@ -66,7 +66,7 @@ def train(output_directory, epochs, learning_rate, iters_per_checkpoint, batch_s
     for epoch in range(epoch_offset, epochs):
         epoch_ave_loss = 0
         print("Epoch: {}".format(epoch))
-        for i, batch in enumerate(train_loader):
+        for i, batch in tqdm(enumerate(train_loader)):
             model.zero_grad()
 
             # zeroPadded_batch = pad_sequence(batch, batch_first=True)
